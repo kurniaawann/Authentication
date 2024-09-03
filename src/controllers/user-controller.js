@@ -91,4 +91,30 @@ const register = (req, res) => {
   }
 };
 
-module.exports = { register };
+const verifMail = (req, res) => {
+  const token = req.query.token;
+  db.query(
+    "SELECT * FROM users WHERE token=? LIMIT 1",
+    token,
+    function (error, result, fields) {
+      if (error) {
+        console.log(error.message);
+      }
+
+      if (result.length > 0) {
+        db.query(
+          `UPDATE users SET token = NULL, is_verified = 1 WHERE id = ${result[0].id} `
+        );
+
+        console.log(result[0].id);
+        return res.render("email-verification", {
+          message: "mail verified success",
+        });
+      } else {
+        return res.render("404");
+      }
+    }
+  );
+};
+
+module.exports = { register, verifMail };

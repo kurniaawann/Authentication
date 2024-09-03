@@ -2,27 +2,40 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 require("./config/db-connection");
 
 const userRouter = require("./routes/user-route");
+const webRouter = require("./routes/web-route");
 
 const app = express();
+
+// Middleware untuk parsing JSON dan URL-encoded data
 app.use(express.json());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
+
+// Mengaktifkan CORS
 app.use(cors());
 
+// Menggunakan router
 app.use("/api", userRouter);
+app.use("/", webRouter);
 
-//error handling
+// Error handling middleware
 app.use((err, req, res, next) => {
-  err.statusCode = err.statusCode || 500;
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
 
-  err.message = err.message || "Internal Server Error";
-  res.status(err.statusCode).json({
-    message: err.message,
+  // Log error jika diperlukan
+  console.error(`Error: ${message}`);
+
+  // Mengirim response error
+  res.status(statusCode).json({
+    status: "error",
+    statusCode,
+    message,
   });
 });
 
-app.listen(5000, () => console.log("server running"));
+// Menentukan port dari environment variable atau default 5000
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
