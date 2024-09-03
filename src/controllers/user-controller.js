@@ -179,4 +179,37 @@ const login = (req, res) => {
   );
 };
 
-module.exports = { register, verifMail, login };
+const getUser = (req, res) => {
+  const autToken = req.headers["authorization"];
+  const token = autToken.split(" ")[1];
+  try {
+    const decodeToken = jwt.verify(token, JWT_SECRET);
+
+    db.query(
+      "SELECT * FROM users WHERE id=?",
+      decodeToken.id,
+      function (error, result, fields) {
+        if (error) throw error;
+        return res.status(200).send({
+          success: true,
+          data: result[0],
+          message: "success",
+        });
+      }
+    );
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).send({
+        success: false,
+        message: "Token sudah expired",
+      });
+    } else {
+      return res.status(401).send({
+        success: false,
+        message: "Token tidak valid",
+      });
+    }
+  }
+};
+
+module.exports = { register, verifMail, login, getUser };
