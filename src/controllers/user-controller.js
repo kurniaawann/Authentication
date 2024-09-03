@@ -3,6 +3,11 @@ const bcrypt = require("bcryptjs");
 const db = require("../config/db-connection");
 const randomString = require("randomstring");
 const sendEmail = require("../helpers/send-email");
+const dotenv = require("dotenv");
+dotenv.config({ path: ".env.dev" });
+const jwt = require("jsonwebtoken");
+const { JWT_SECRET } = process.env;
+
 const register = (req, res) => {
   const errors = validationResult(req);
 
@@ -117,4 +122,61 @@ const verifMail = (req, res) => {
   );
 };
 
-module.exports = { register, verifMail };
+const login = (req, res) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      errors: errors.array(),
+    });
+  }
+  db.query(
+    `SELECT * FROM users WHERE email =${db.escape(req.body.email)}`,
+    (err, result) => {
+      if (err) {
+        return res.status(400).send({
+          status: "fail",
+          message: err,
+        });
+      }
+
+      if (!result.length) {
+        return res.status(401).send({
+          message: "Email or password is incorrect",
+        });
+      }
+      bcrypt.compare(
+        req.body.password,
+        result[0]["password"],
+        (bError, bResult) => {
+          if (err) {
+            return res.status(400).send({
+              status: "fail",
+              message: bError,
+            });
+          }
+          if (bResult) {
+            const token = jwt.sign(
+              { id: result[0]["id"], is_admin: [0]["is_admin"] },
+              JWT_SECRET,
+              { expiresIn: "1h" }
+            );
+            db.query(
+              `UPDATE users SET last_login = now(), WHERE id = '${result[0]["id"]}'`
+            );
+            return res.status(201).send({
+              message: "Logged in",
+              token: token,
+              user: result[0],
+            });
+          }
+          return res.status(401).send({
+            message: "Email or Password is incorrent ",
+          });
+        }
+      );
+    }
+  );
+};
+
+module.exports = { register, verifMail, login };
